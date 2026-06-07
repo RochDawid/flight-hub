@@ -11,10 +11,21 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
-import { a320neoProfile } from "./data/a320neo";
+import {
+  aircraftProfiles,
+  defaultAircraftProfile,
+  findAircraftProfile,
+} from "./data/profiles";
 import type { AircraftProfile, FlightPhase } from "./types";
 
-type Route = "dashboard" | "checklist";
+type Route =
+  | {
+      kind: "dashboard";
+    }
+  | {
+      kind: "checklist";
+      profileId: string;
+    };
 
 type ChecklistSession = {
   completed: Record<string, boolean>;
@@ -46,26 +57,45 @@ const planningLinks: PlanningLink[] = [
   },
 ];
 
-const profile = a320neoProfile;
-const storageKey = `flight-hub:${profile.id}:session:v1`;
+const routeAliases: Record<string, string> = {
+  "737max": "boeing-737-max-8",
+  "a320neo": "inibuilds-a320neo",
+  "c172": "c172-skyhawk-g1000",
+  "tbm930": "daher-tbm930",
+};
 
-function readRoute(): Route {
-  return window.location.hash === "#a320neo" ? "checklist" : "dashboard";
+function storageKeyFor(profileId: string): string {
+  return `flight-hub:${profileId}:session:v1`;
 }
 
-function createSession(): ChecklistSession {
+function readRoute(): Route {
+  const hash = window.location.hash.replace(/^#/, "");
+  const profileId = routeAliases[hash] ?? hash;
+  const profile = profileId ? findAircraftProfile(profileId) : undefined;
+
+  if (!profile) {
+    return { kind: "dashboard" };
+  }
+
   return {
-    completed: {},
-    activePhaseId: profile.phases[0].id,
+    kind: "checklist",
+    profileId: profile.id,
   };
 }
 
-function loadSession(): ChecklistSession {
+function createSession(profile: AircraftProfile): ChecklistSession {
+  return {
+    completed: {},
+    activePhaseId: profile.phases[0]?.id ?? "",
+  };
+}
+
+function loadSession(profile: AircraftProfile): ChecklistSession {
   try {
-    const raw = window.localStorage.getItem(storageKey);
+    const raw = window.localStorage.getItem(storageKeyFor(profile.id));
 
     if (!raw) {
-      return createSession();
+      return createSession(profile);
     }
 
     const parsed = JSON.parse(raw) as Partial<ChecklistSession>;
@@ -77,12 +107,18 @@ function loadSession(): ChecklistSession {
       completed: parsed.completed ?? {},
       activePhaseId: activePhaseExists
         ? parsed.activePhaseId!
-        : profile.phases[0].id,
+        : profile.phases[0]?.id ?? "",
       updatedAt: parsed.updatedAt,
     };
   } catch {
-    return createSession();
+    return createSession(profile);
   }
+}
+
+function loadSessions(): Record<string, ChecklistSession> {
+  return Object.fromEntries(
+    aircraftProfiles.map((profile) => [profile.id, loadSession(profile)]),
+  );
 }
 
 function formatUpdatedAt(value?: string): string {
@@ -115,21 +151,56 @@ function getPhaseCompletion(
   };
 }
 
+function getProfileProgress(
+  profile: AircraftProfile,
+  session: ChecklistSession,
+) {
+  const allItemIds = getAllItemIds(profile);
+  const completedCount = allItemIds.filter((id) => session.completed[id]).length;
+  const totalCount = allItemIds.length;
+  const overallPercent =
+    totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
+  const nextPhase =
+    profile.phases.find(
+      (phase) =>
+        getPhaseCompletion(phase, session.completed).done < phase.items.length,
+    ) ?? profile.phases[profile.phases.length - 1];
+
+  return {
+    completedCount,
+    nextPhaseTitle: nextPhase?.title ?? "Complete",
+    overallPercent,
+    totalCount,
+  };
+}
+
 function App() {
   const [route, setRoute] = useState<Route>(readRoute);
-  const [session, setSession] = useState<ChecklistSession>(loadSession);
+  const [sessions, setSessions] =
+    useState<Record<string, ChecklistSession>>(loadSessions);
   const [recentlyCheckedItemId, setRecentlyCheckedItemId] = useState<
     string | null
   >(null);
 
-  const allItemIds = useMemo(() => getAllItemIds(profile), []);
+  const activeProfile =
+    route.kind === "checklist"
+      ? findAircraftProfile(route.profileId) ?? defaultAircraftProfile
+      : defaultAircraftProfile;
+  const session =
+    sessions[activeProfile.id] ?? createSession(activeProfile);
+  const allItemIds = useMemo(
+    () => getAllItemIds(activeProfile),
+    [activeProfile],
+  );
   const completedCount = allItemIds.filter((id) => session.completed[id]).length;
   const totalCount = allItemIds.length;
   const overallPercent =
     totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
   const activePhase =
-    profile.phases.find((phase) => phase.id === session.activePhaseId) ??
-    profile.phases[0];
+    activeProfile.phases.find((phase) => phase.id === session.activePhaseId) ??
+    activeProfile.phases[0];
+  const routeKey =
+    route.kind === "checklist" ? `${route.kind}:${route.profileId}` : route.kind;
 
   useEffect(() => {
     const handleHashChange = () => setRoute(readRoute());
@@ -140,12 +211,12 @@ function App() {
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem(storageKey, JSON.stringify(session));
-  }, [session]);
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [routeKey]);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  }, [route]);
+    setRecentlyCheckedItemId(null);
+  }, [activeProfile.id]);
 
   useEffect(() => {
     if (!recentlyCheckedItemId) {
@@ -159,18 +230,50 @@ function App() {
     return () => window.clearTimeout(timeoutId);
   }, [recentlyCheckedItemId]);
 
-  function openChecklist() {
-    window.location.hash = "a320neo";
-    setRoute("checklist");
+  function updateSession(
+    profileId: string,
+    updater: (current: ChecklistSession) => ChecklistSession,
+  ) {
+    const profile = findAircraftProfile(profileId);
+
+    if (!profile) {
+      return;
+    }
+
+    setSessions((current) => {
+      const currentSession = current[profileId] ?? createSession(profile);
+      const nextSession = updater(currentSession);
+
+      window.localStorage.setItem(
+        storageKeyFor(profileId),
+        JSON.stringify(nextSession),
+      );
+
+      return {
+        ...current,
+        [profileId]: nextSession,
+      };
+    });
+  }
+
+  function openChecklist(profileId: string) {
+    const profile = findAircraftProfile(profileId);
+
+    if (!profile) {
+      return;
+    }
+
+    window.location.hash = profile.id;
+    setRoute({ kind: "checklist", profileId: profile.id });
   }
 
   function openDashboard() {
     window.history.pushState("", document.title, window.location.pathname);
-    setRoute("dashboard");
+    setRoute({ kind: "dashboard" });
   }
 
   function setActivePhase(activePhaseId: string) {
-    setSession((current) => ({
+    updateSession(activeProfile.id, (current) => ({
       ...current,
       activePhaseId,
       updatedAt: new Date().toISOString(),
@@ -194,7 +297,7 @@ function App() {
       setRecentlyCheckedItemId(null);
     }
 
-    setSession((current) => ({
+    updateSession(activeProfile.id, (current) => ({
       ...current,
       completed: {
         ...current.completed,
@@ -206,19 +309,23 @@ function App() {
 
   function resetSession() {
     const confirmed = window.confirm(
-      "Reset the A320neo checklist session for a new flight?",
+      `Reset the ${activeProfile.name} checklist session for a new flight?`,
     );
 
     if (!confirmed) {
       return;
     }
 
-    const nextSession = createSession();
-    window.localStorage.removeItem(storageKey);
-    setSession(nextSession);
+    const nextSession = createSession(activeProfile);
+    window.localStorage.removeItem(storageKeyFor(activeProfile.id));
+    setRecentlyCheckedItemId(null);
+    setSessions((current) => ({
+      ...current,
+      [activeProfile.id]: nextSession,
+    }));
   }
 
-  if (route === "checklist") {
+  if (route.kind === "checklist" && activePhase) {
     return (
       <ChecklistPage
         activePhase={activePhase}
@@ -228,7 +335,7 @@ function App() {
         onReset={resetSession}
         onToggleItem={toggleItem}
         overallPercent={overallPercent}
-        profile={profile}
+        profile={activeProfile}
         recentlyCheckedItemId={recentlyCheckedItemId}
         session={session}
         totalCount={totalCount}
@@ -238,38 +345,24 @@ function App() {
 
   return (
     <DashboardPage
-      completedCount={completedCount}
       onOpenChecklist={openChecklist}
-      overallPercent={overallPercent}
-      profile={profile}
-      session={session}
-      totalCount={totalCount}
+      profiles={aircraftProfiles}
+      sessions={sessions}
     />
   );
 }
 
 type DashboardProps = {
-  completedCount: number;
-  onOpenChecklist: () => void;
-  overallPercent: number;
-  profile: AircraftProfile;
-  session: ChecklistSession;
-  totalCount: number;
+  onOpenChecklist: (profileId: string) => void;
+  profiles: AircraftProfile[];
+  sessions: Record<string, ChecklistSession>;
 };
 
 function DashboardPage({
-  completedCount,
   onOpenChecklist,
-  overallPercent,
-  profile,
-  session,
-  totalCount,
+  profiles,
+  sessions,
 }: DashboardProps) {
-  const nextPhase =
-    profile.phases.find(
-      (phase) => getPhaseCompletion(phase, session.completed).done < phase.items.length,
-    ) ?? profile.phases[profile.phases.length - 1];
-
   return (
     <main className="app-shell dashboard-shell">
       <TopBar />
@@ -280,9 +373,9 @@ function DashboardPage({
           <h1>Flight Hub</h1>
           <p className="intro-copy">
             A minimalist aircraft checklist hub for running a clean simulator
-            flight from stand to destination gate. Start with the iniBuilds
-            A320neo, keep the useful planning tools nearby, and tick through
-            each phase beside the sim.
+            flight from stand to destination gate. Pick an aircraft profile,
+            keep the useful planning tools nearby, and tick through each phase
+            beside the sim.
           </p>
 
           <div className="notice">
@@ -294,15 +387,25 @@ function DashboardPage({
           </div>
         </div>
 
-        <AircraftCard
-          completedCount={completedCount}
-          nextPhaseTitle={nextPhase.title}
-          onOpenChecklist={onOpenChecklist}
-          overallPercent={overallPercent}
-          profile={profile}
-          session={session}
-          totalCount={totalCount}
-        />
+        <div className="aircraft-list" aria-label="Aircraft profiles">
+          {profiles.map((profile) => {
+            const session = sessions[profile.id] ?? createSession(profile);
+            const progress = getProfileProgress(profile, session);
+
+            return (
+              <AircraftCard
+                completedCount={progress.completedCount}
+                key={profile.id}
+                nextPhaseTitle={progress.nextPhaseTitle}
+                onOpenChecklist={() => onOpenChecklist(profile.id)}
+                overallPercent={progress.overallPercent}
+                profile={profile}
+                session={session}
+                totalCount={progress.totalCount}
+              />
+            );
+          })}
+        </div>
       </section>
 
       <section className="planning-section" aria-labelledby="planning-title">
@@ -356,7 +459,7 @@ function AircraftCard({
     <article className="aircraft-card">
       <div className="aircraft-card-header">
         <div>
-          <p className="eyebrow">First aircraft profile</p>
+          <p className="eyebrow">Aircraft profile</p>
           <h2>{profile.name}</h2>
           <p>{profile.variant}</p>
         </div>
@@ -389,8 +492,12 @@ function AircraftCard({
         />
       </div>
 
-      <button className="primary-action" onClick={onOpenChecklist} type="button">
-        Open A320neo checklist
+      <button
+        className="primary-action"
+        onClick={onOpenChecklist}
+        type="button"
+      >
+        Open checklist
       </button>
     </article>
   );
@@ -476,7 +583,8 @@ function ChecklistPage({
           {profile.phases.map((phase, index) => {
             const completion = getPhaseCompletion(phase, session.completed);
             const isActive = phase.id === activePhase.id;
-            const isComplete = completion.done === completion.total;
+            const isComplete =
+              completion.total > 0 && completion.done === completion.total;
 
             return (
               <button

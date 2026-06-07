@@ -9,7 +9,7 @@ The primary product shape: checklists are organized by aircraft and flight phase
 _Avoid_: Flight-planning companion, route planner
 
 **Aircraft Profile**:
-An aircraft-specific checklist flow for one simulator aircraft or add-on. The first aircraft profile targets the iniBuilds A320neo rather than a generic A320neo.
+An aircraft-specific checklist flow for one simulator aircraft or add-on. Profiles should name the exact simulator aircraft or add-on, such as the iniBuilds A320neo, rather than a generic aircraft family.
 _Avoid_: Generic aircraft template, aircraft family checklist
 
 **Flight Phase**:
