@@ -1,4 +1,4 @@
-# Flight Checklists
+# Flight Hub
 
 A personal Microsoft Flight Simulator procedure companion organized around aircraft-specific checklist flows. It exists to make each simulator flight easier to prepare, fly, and finish without turning the experience into a full route-planning system.
 

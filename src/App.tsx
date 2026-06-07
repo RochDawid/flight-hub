@@ -47,7 +47,7 @@ const planningLinks: PlanningLink[] = [
 ];
 
 const profile = a320neoProfile;
-const storageKey = `flight-checklists:${profile.id}:session:v1`;
+const storageKey = `flight-hub:${profile.id}:session:v1`;
 
 function readRoute(): Route {
   return window.location.hash === "#a320neo" ? "checklist" : "dashboard";
@@ -277,7 +277,7 @@ function DashboardPage({
       <section className="dashboard-grid">
         <div className="intro-panel">
           <p className="eyebrow">MSFS 2024 checklist companion</p>
-          <h1>Flight Checklists</h1>
+          <h1>Flight Hub</h1>
           <p className="intro-copy">
             A minimalist aircraft checklist hub for running a clean simulator
             flight from stand to destination gate. Start with the iniBuilds
@@ -558,7 +558,7 @@ function TopBar() {
     <header className="topbar">
       <a className="brand" href="/">
         <Plane size={20} aria-hidden="true" />
-        <span>Flight Checklists</span>
+        <span>Flight Hub</span>
       </a>
       <span className="sim-badge">MSFS 2024</span>
     </header>
