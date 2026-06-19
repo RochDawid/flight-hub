@@ -22,9 +22,14 @@ import {
   getAllItemIds,
   getPhaseCompletion,
   getProfileProgress,
-  getSessionReadyForChecklistOpen,
+  loadSessions,
+  prepareSessionForChecklistOpen,
+  resetSession,
+  setSessionActivePhase,
+  toggleSessionItem,
+  updateSession as updateStoredSession,
   type ChecklistSession,
-} from "./checklistProgress";
+} from "./session";
 import type { AircraftProfile, FlightPhase } from "./types";
 
 type Route =
@@ -48,8 +53,6 @@ type AircraftVisual = {
 };
 
 const appName = "MSFS Checklist Companion";
-const storageKeyPrefix = "msfs-checklist-companion";
-const legacyStorageKeyPrefix = "flight-hub";
 const focusableDialogSelector = [
   "a[href]",
   "button:not([disabled])",
@@ -103,14 +106,6 @@ const aircraftVisuals: Record<string, AircraftVisual> = {
   },
 };
 
-function storageKeyFor(profileId: string): string {
-  return `${storageKeyPrefix}:${profileId}:session:v1`;
-}
-
-function legacyStorageKeyFor(profileId: string): string {
-  return `${legacyStorageKeyPrefix}:${profileId}:session:v1`;
-}
-
 function readRoute(): Route {
   const hash = window.location.hash.replace(/^#/, "");
   const profileId = routeAliases[hash] ?? hash;
@@ -124,46 +119,6 @@ function readRoute(): Route {
     kind: "checklist",
     profileId: profile.id,
   };
-}
-
-function loadSession(profile: AircraftProfile): ChecklistSession {
-  try {
-    const storageKey = storageKeyFor(profile.id);
-    const legacyStorageKey = legacyStorageKeyFor(profile.id);
-    const raw = window.localStorage.getItem(storageKey);
-    const legacyRaw = raw ? null : window.localStorage.getItem(legacyStorageKey);
-    const persistedRaw = raw ?? legacyRaw;
-
-    if (!persistedRaw) {
-      return createSession(profile);
-    }
-
-    const parsed = JSON.parse(persistedRaw) as Partial<ChecklistSession>;
-    const activePhaseExists = profile.phases.some(
-      (phase) => phase.id === parsed.activePhaseId,
-    );
-
-    if (legacyRaw) {
-      window.localStorage.setItem(storageKey, legacyRaw);
-      window.localStorage.removeItem(legacyStorageKey);
-    }
-
-    return {
-      completed: parsed.completed ?? {},
-      activePhaseId: activePhaseExists
-        ? parsed.activePhaseId!
-        : profile.phases[0]?.id ?? "",
-      updatedAt: parsed.updatedAt,
-    };
-  } catch {
-    return createSession(profile);
-  }
-}
-
-function loadSessions(): Record<string, ChecklistSession> {
-  return Object.fromEntries(
-    aircraftProfiles.map((profile) => [profile.id, loadSession(profile)]),
-  );
 }
 
 function formatUpdatedAt(value?: string): string {
@@ -257,8 +212,9 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
 
 function App() {
   const [route, setRoute] = useState<Route>(readRoute);
-  const [sessions, setSessions] =
-    useState<Record<string, ChecklistSession>>(loadSessions);
+  const [sessions, setSessions] = useState<Record<string, ChecklistSession>>(
+    () => loadSessions(aircraftProfiles, window.localStorage),
+  );
   const [recentlyCheckedItemId, setRecentlyCheckedItemId] = useState<
     string | null
   >(null);
@@ -329,7 +285,7 @@ function App() {
     wasResetDialogOpenRef.current = isResetDialogOpen;
   }, [isResetDialogOpen]);
 
-  function updateSession(
+  function updateSessionState(
     profileId: string,
     updater: (current: ChecklistSession) => ChecklistSession,
   ) {
@@ -340,12 +296,11 @@ function App() {
     }
 
     setSessions((current) => {
-      const currentSession = current[profileId] ?? createSession(profile);
-      const nextSession = updater(currentSession);
-
-      window.localStorage.setItem(
-        storageKeyFor(profileId),
-        JSON.stringify(nextSession),
+      const nextSession = updateStoredSession(
+        profile,
+        current[profileId],
+        window.localStorage,
+        updater,
       );
 
       return {
@@ -363,16 +318,13 @@ function App() {
     }
 
     const currentSession = sessions[profile.id] ?? createSession(profile);
-    const nextSession = getSessionReadyForChecklistOpen(
+    const nextSession = prepareSessionForChecklistOpen(
       profile,
       currentSession,
+      window.localStorage,
     );
 
     if (nextSession !== currentSession) {
-      window.localStorage.setItem(
-        storageKeyFor(profile.id),
-        JSON.stringify(nextSession),
-      );
       setSessions((current) => ({
         ...current,
         [profile.id]: nextSession,
@@ -389,11 +341,9 @@ function App() {
   }
 
   function setActivePhase(activePhaseId: string) {
-    updateSession(activeProfile.id, (current) => ({
-      ...current,
-      activePhaseId,
-      updatedAt: new Date().toISOString(),
-    }));
+    updateSessionState(activeProfile.id, (current) =>
+      setSessionActivePhase(current, activePhaseId),
+    );
 
     if (window.matchMedia("(max-width: 920px)").matches) {
       window.setTimeout(() => {
@@ -413,14 +363,9 @@ function App() {
       setRecentlyCheckedItemId(null);
     }
 
-    updateSession(activeProfile.id, (current) => ({
-      ...current,
-      completed: {
-        ...current.completed,
-        [itemId]: !current.completed[itemId],
-      },
-      updatedAt: new Date().toISOString(),
-    }));
+    updateSessionState(activeProfile.id, (current) =>
+      toggleSessionItem(current, itemId),
+    );
   }
 
   const requestResetSession = useCallback(() => {
@@ -432,9 +377,7 @@ function App() {
   }, []);
 
   const confirmResetSession = useCallback(() => {
-    const nextSession = createSession(activeProfile);
-    window.localStorage.removeItem(storageKeyFor(activeProfile.id));
-    window.localStorage.removeItem(legacyStorageKeyFor(activeProfile.id));
+    const nextSession = resetSession(activeProfile, window.localStorage);
     setRecentlyCheckedItemId(null);
     setIsResetDialogOpen(false);
     setSessions((current) => ({
