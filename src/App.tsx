@@ -17,6 +17,14 @@ import {
   defaultAircraftProfile,
   findAircraftProfile,
 } from "./data/profiles";
+import {
+  createSession,
+  getAllItemIds,
+  getPhaseCompletion,
+  getProfileProgress,
+  getSessionReadyForChecklistOpen,
+  type ChecklistSession,
+} from "./checklistProgress";
 import type { AircraftProfile, FlightPhase } from "./types";
 
 type Route =
@@ -27,12 +35,6 @@ type Route =
       kind: "checklist";
       profileId: string;
     };
-
-type ChecklistSession = {
-  completed: Record<string, boolean>;
-  activePhaseId: string;
-  updatedAt?: string;
-};
 
 type PlanningLink = {
   label: string;
@@ -124,13 +126,6 @@ function readRoute(): Route {
   };
 }
 
-function createSession(profile: AircraftProfile): ChecklistSession {
-  return {
-    completed: {},
-    activePhaseId: profile.phases[0]?.id ?? "",
-  };
-}
-
 function loadSession(profile: AircraftProfile): ChecklistSession {
   try {
     const storageKey = storageKeyFor(profile.id);
@@ -182,46 +177,6 @@ function formatUpdatedAt(value?: string): string {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
-}
-
-function getAllItemIds(aircraft: AircraftProfile): string[] {
-  return aircraft.phases.flatMap((phase) => phase.items.map((item) => item.id));
-}
-
-function getPhaseCompletion(
-  phase: FlightPhase,
-  completed: Record<string, boolean>,
-) {
-  const done = phase.items.filter((item) => completed[item.id]).length;
-
-  return {
-    done,
-    total: phase.items.length,
-    ratio: phase.items.length === 0 ? 0 : done / phase.items.length,
-  };
-}
-
-function getProfileProgress(
-  profile: AircraftProfile,
-  session: ChecklistSession,
-) {
-  const allItemIds = getAllItemIds(profile);
-  const completedCount = allItemIds.filter((id) => session.completed[id]).length;
-  const totalCount = allItemIds.length;
-  const overallPercent =
-    totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
-  const nextPhase =
-    profile.phases.find(
-      (phase) =>
-        getPhaseCompletion(phase, session.completed).done < phase.items.length,
-    ) ?? profile.phases[profile.phases.length - 1];
-
-  return {
-    completedCount,
-    nextPhaseTitle: nextPhase?.title ?? "Complete",
-    overallPercent,
-    totalCount,
-  };
 }
 
 function getMostRecentProfile(
@@ -405,6 +360,23 @@ function App() {
 
     if (!profile) {
       return;
+    }
+
+    const currentSession = sessions[profile.id] ?? createSession(profile);
+    const nextSession = getSessionReadyForChecklistOpen(
+      profile,
+      currentSession,
+    );
+
+    if (nextSession !== currentSession) {
+      window.localStorage.setItem(
+        storageKeyFor(profile.id),
+        JSON.stringify(nextSession),
+      );
+      setSessions((current) => ({
+        ...current,
+        [profile.id]: nextSession,
+      }));
     }
 
     window.location.hash = profile.id;
