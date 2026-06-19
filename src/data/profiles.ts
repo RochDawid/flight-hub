@@ -1,8 +1,8 @@
 import type { AircraftProfile } from "../types";
-import { a320neoProfile } from "./a320neo";
-import { b737Max8Profile } from "./b737max8";
-import { c172SkyhawkG1000Profile } from "./c172";
-import { tbm930Profile } from "./tbm930";
+import a320neoProfile from "./a320neo.json";
+import b737Max8Profile from "./b737max8.json";
+import c172SkyhawkG1000Profile from "./c172.json";
+import tbm930Profile from "./tbm930.json";
 
 export const aircraftProfiles = [
   a320neoProfile,
