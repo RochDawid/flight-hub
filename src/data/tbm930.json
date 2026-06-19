@@ -1,0 +1,345 @@
+{
+  "id": "daher-tbm930",
+  "name": "Daher TBM 930",
+  "variant": "Single-engine turboprop",
+  "simulator": "Microsoft Flight Simulator 2024",
+  "description": "A fast IFR turboprop flow for the default TBM 930, centered on G3000 setup, turbine start, and stabilized arrivals.",
+  "phases": [
+    {
+      "id": "cold-dark-power",
+      "title": "Cold & Dark Power",
+      "summary": "Establish electrical power and prepare the turbine start.",
+      "items": [
+        {
+          "id": "parking-brake-set",
+          "action": "Parking brake - SET",
+          "confirmation": "Aircraft secure"
+        },
+        {
+          "id": "battery-on",
+          "action": "Battery - ON",
+          "confirmation": "Main electrical power available"
+        },
+        {
+          "id": "gpu-as-needed",
+          "action": "GPU or generator source - Available as needed",
+          "confirmation": "Stable power for setup",
+          "note": "Use ground power in the sim when you want more setup time before engine start."
+        },
+        {
+          "id": "fuel-quantity",
+          "action": "Fuel quantity - Checked",
+          "confirmation": "Fuel supports route and reserve"
+        },
+        {
+          "id": "lights-prestart",
+          "action": "Beacon - ON",
+          "confirmation": "Start warning active"
+        }
+      ]
+    },
+    {
+      "id": "engine-start",
+      "title": "Engine Start",
+      "summary": "Start the PT6 and bring the engine onto stable idle.",
+      "items": [
+        {
+          "id": "condition-start",
+          "action": "Power lever / condition - Start position",
+          "confirmation": "Engine controls ready"
+        },
+        {
+          "id": "starter-on",
+          "action": "Starter - Engage",
+          "confirmation": "Ng rising"
+        },
+        {
+          "id": "fuel-introduce",
+          "action": "Fuel - Introduce at stable start speed",
+          "confirmation": "ITT rises and remains controlled"
+        },
+        {
+          "id": "engine-stable",
+          "action": "Engine instruments - Checked",
+          "confirmation": "Torque, ITT, Ng, and oil indications normal"
+        },
+        {
+          "id": "generator-on",
+          "action": "Generator - ON",
+          "confirmation": "Aircraft powered by engine generator"
+        }
+      ]
+    },
+    {
+      "id": "g3000-setup",
+      "title": "G3000 Setup",
+      "summary": "Load the flight plan and tune the departure avionics.",
+      "items": [
+        {
+          "id": "flight-plan-loaded",
+          "action": "Flight plan - Loaded",
+          "confirmation": "Route legs and destination look correct"
+        },
+        {
+          "id": "departure-procedure",
+          "action": "Departure and initial altitude - Set",
+          "confirmation": "First lateral and vertical targets are visible"
+        },
+        {
+          "id": "baro-set",
+          "action": "Baro reference - Set",
+          "confirmation": "Altimeter matches field elevation"
+        },
+        {
+          "id": "com-nav-set",
+          "action": "COM, NAV, and transponder - Set",
+          "confirmation": "Communication and navigation ready"
+        },
+        {
+          "id": "autopilot-bugs",
+          "action": "Heading, altitude, and speed references - Set",
+          "confirmation": "Panel targets match clearance or plan"
+        }
+      ]
+    },
+    {
+      "id": "taxi-before-takeoff",
+      "title": "Taxi & Before Takeoff",
+      "summary": "Configure the aircraft and verify ground handling before departure.",
+      "items": [
+        {
+          "id": "taxi-light-on",
+          "action": "Taxi light - ON",
+          "confirmation": "Taxi path illuminated"
+        },
+        {
+          "id": "brake-check",
+          "action": "Brake check - Complete",
+          "confirmation": "Aircraft slows correctly"
+        },
+        {
+          "id": "flight-controls",
+          "action": "Flight controls - Free and correct",
+          "confirmation": "Controls respond in the expected direction"
+        },
+        {
+          "id": "flaps-takeoff",
+          "action": "Flaps - TAKEOFF",
+          "confirmation": "Flap indication set for departure"
+        },
+        {
+          "id": "trim-takeoff",
+          "action": "Trim - Set for takeoff",
+          "confirmation": "Pitch trim in takeoff range"
+        },
+        {
+          "id": "inertial-separator",
+          "action": "Inertial separator / anti-ice - Set for conditions",
+          "confirmation": "Engine protection matches weather"
+        }
+      ]
+    },
+    {
+      "id": "takeoff",
+      "title": "Takeoff",
+      "summary": "Advance power, rotate, and establish the first climb segment.",
+      "items": [
+        {
+          "id": "lights-takeoff",
+          "action": "Landing light and strobes - ON",
+          "confirmation": "Aircraft visible for takeoff"
+        },
+        {
+          "id": "power-set",
+          "action": "Power - Advance smoothly to takeoff torque",
+          "confirmation": "Torque and ITT stay within limits"
+        },
+        {
+          "id": "rotate",
+          "action": "Rotate - Smoothly lift off",
+          "confirmation": "Positive climb established"
+        },
+        {
+          "id": "gear-up",
+          "action": "Landing gear - UP",
+          "confirmation": "Gear retracted"
+        },
+        {
+          "id": "climb-power",
+          "action": "Climb power - Set",
+          "confirmation": "Engine stabilized for climb"
+        }
+      ]
+    },
+    {
+      "id": "climb-cruise",
+      "title": "Climb & Cruise",
+      "summary": "Clean up, manage pressurization, and settle into cruise.",
+      "items": [
+        {
+          "id": "flaps-up",
+          "action": "Flaps - UP on schedule",
+          "confirmation": "Aircraft clean"
+        },
+        {
+          "id": "yaw-damper-ap",
+          "action": "Yaw damper and autopilot - ON when desired",
+          "confirmation": "Aircraft following selected modes"
+        },
+        {
+          "id": "pressurization-check",
+          "action": "Pressurization - Checked",
+          "confirmation": "Cabin climb and differential pressure normal"
+        },
+        {
+          "id": "fuel-engine-monitor",
+          "action": "Fuel and engine instruments - Monitored",
+          "confirmation": "Fuel burn and temperatures remain comfortable"
+        },
+        {
+          "id": "standard-baro",
+          "action": "Baro - STD above transition altitude",
+          "confirmation": "Standard pressure set"
+        }
+      ]
+    },
+    {
+      "id": "descent-preparation",
+      "title": "Descent Preparation",
+      "summary": "Prepare the G3000, weather, and cabin before top of descent.",
+      "items": [
+        {
+          "id": "arrival-weather",
+          "action": "Arrival weather / ATIS - Checked",
+          "confirmation": "Runway, wind, altimeter, and approach known"
+        },
+        {
+          "id": "arrival-loaded",
+          "action": "Arrival and approach - Loaded",
+          "confirmation": "Procedure legs and minima reviewed"
+        },
+        {
+          "id": "descent-target",
+          "action": "Altitude target - Set for cleared descent",
+          "confirmation": "Autopilot has a valid descent target"
+        },
+        {
+          "id": "landing-data",
+          "action": "Landing reference speeds - Reviewed",
+          "confirmation": "Approach speed target understood"
+        },
+        {
+          "id": "cabin-descent",
+          "action": "Pressurization and ice protection - Checked",
+          "confirmation": "Cabin and anti-ice ready for descent conditions"
+        }
+      ]
+    },
+    {
+      "id": "approach",
+      "title": "Approach",
+      "summary": "Configure the turboprop and stabilize on final.",
+      "items": [
+        {
+          "id": "qnh-set",
+          "action": "Baro reference - QNH",
+          "confirmation": "Destination altimeter set"
+        },
+        {
+          "id": "approach-mode",
+          "action": "Approach guidance - Armed or active",
+          "confirmation": "G3000 guidance matches runway or approach"
+        },
+        {
+          "id": "speed-managed",
+          "action": "Power and speed - Managed",
+          "confirmation": "Airspeed below gear and flap limits"
+        },
+        {
+          "id": "gear-down",
+          "action": "Landing gear - DOWN",
+          "confirmation": "Three green"
+        },
+        {
+          "id": "flaps-landing",
+          "action": "Flaps - LANDING",
+          "confirmation": "Landing configuration complete"
+        },
+        {
+          "id": "stable-approach",
+          "action": "Stable approach - Confirm",
+          "confirmation": "On path, on speed, landing checks complete"
+        }
+      ]
+    },
+    {
+      "id": "landing",
+      "title": "Landing",
+      "summary": "Touch down, slow the aircraft, and leave the runway cleanly.",
+      "items": [
+        {
+          "id": "autopilot-off",
+          "action": "Autopilot - OFF when hand flying",
+          "confirmation": "Manual control established"
+        },
+        {
+          "id": "flare-touchdown",
+          "action": "Flare and touchdown - Execute",
+          "confirmation": "Main gear down under control"
+        },
+        {
+          "id": "reverse-beta",
+          "action": "Reverse or beta range - As needed",
+          "confirmation": "Aircraft decelerating"
+        },
+        {
+          "id": "manual-braking",
+          "action": "Braking - As required",
+          "confirmation": "Safe taxi speed achieved"
+        },
+        {
+          "id": "runway-clear",
+          "action": "Vacate runway - Complete",
+          "confirmation": "Aircraft clear of active runway"
+        }
+      ]
+    },
+    {
+      "id": "after-landing-shutdown",
+      "title": "After Landing / Shutdown",
+      "summary": "Clean up after runway exit, park, and secure the TBM.",
+      "items": [
+        {
+          "id": "flaps-up",
+          "action": "Flaps - UP",
+          "confirmation": "Aircraft clean for taxi"
+        },
+        {
+          "id": "lights-after-landing",
+          "action": "Landing lights and strobes - OFF",
+          "confirmation": "Taxi lighting remains as needed"
+        },
+        {
+          "id": "inertial-after-landing",
+          "action": "Inertial separator / anti-ice - Set for taxi conditions",
+          "confirmation": "Engine protection matches ground conditions"
+        },
+        {
+          "id": "parking-brake-final",
+          "action": "Parking brake - SET",
+          "confirmation": "Aircraft stopped at stand"
+        },
+        {
+          "id": "engine-shutdown",
+          "action": "Engine - Shutdown",
+          "confirmation": "Propeller stopped and generator offline"
+        },
+        {
+          "id": "battery-off",
+          "action": "Battery and exterior lights - OFF",
+          "confirmation": "Aircraft secured"
+        }
+      ]
+    }
+  ]
+}

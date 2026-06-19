@@ -1,0 +1,330 @@
+{
+  "id": "c172-skyhawk-g1000",
+  "name": "Cessna 172 Skyhawk G1000",
+  "variant": "Cessna 172 Skyhawk",
+  "simulator": "Microsoft Flight Simulator 2024",
+  "description": "A compact GA flow for VFR hops, pattern work, and light IFR in the default G1000 Skyhawk.",
+  "phases": [
+    {
+      "id": "preflight-power",
+      "title": "Preflight & Power",
+      "summary": "Wake the aircraft, verify fuel, and make the cockpit readable.",
+      "items": [
+        {
+          "id": "parking-brake-set",
+          "action": "Parking brake - SET",
+          "confirmation": "Aircraft secure before applying power"
+        },
+        {
+          "id": "battery-master-on",
+          "action": "Battery master - ON",
+          "confirmation": "Electrical power available"
+        },
+        {
+          "id": "fuel-quantity-check",
+          "action": "Fuel quantity - Checked",
+          "confirmation": "Fuel sufficient for the planned flight and reserve"
+        },
+        {
+          "id": "fuel-selector-both",
+          "action": "Fuel selector - BOTH",
+          "confirmation": "Both tanks feeding"
+        },
+        {
+          "id": "avionics-off",
+          "action": "Avionics bus - OFF for engine start",
+          "confirmation": "Displays protected during start"
+        }
+      ]
+    },
+    {
+      "id": "engine-start",
+      "title": "Engine Start",
+      "summary": "Start the piston engine and bring the avionics online.",
+      "items": [
+        {
+          "id": "mixture-rich",
+          "action": "Mixture - RICH",
+          "confirmation": "Engine ready for start"
+        },
+        {
+          "id": "throttle-cracked",
+          "action": "Throttle - Slightly open",
+          "confirmation": "Idle airflow set"
+        },
+        {
+          "id": "beacon-on",
+          "action": "Beacon - ON",
+          "confirmation": "Start warning active"
+        },
+        {
+          "id": "starter-engage",
+          "action": "Ignition - START, then BOTH",
+          "confirmation": "Engine running smoothly"
+        },
+        {
+          "id": "oil-pressure-check",
+          "action": "Oil pressure - Checked",
+          "confirmation": "Oil pressure rises after start"
+        },
+        {
+          "id": "avionics-on",
+          "action": "Avionics bus - ON",
+          "confirmation": "G1000 displays powered"
+        }
+      ]
+    },
+    {
+      "id": "g1000-setup",
+      "title": "G1000 Setup",
+      "summary": "Load the route, tune radios, and set basic departure targets.",
+      "items": [
+        {
+          "id": "flight-plan-loaded",
+          "action": "Flight plan - Loaded or direct-to set",
+          "confirmation": "Magenta course matches intended departure"
+        },
+        {
+          "id": "com-nav-set",
+          "action": "COM and NAV frequencies - Set",
+          "confirmation": "Departure communication and navigation ready"
+        },
+        {
+          "id": "baro-set",
+          "action": "Altimeter baro - Set",
+          "confirmation": "Field elevation reads correctly"
+        },
+        {
+          "id": "heading-bug-runway",
+          "action": "Heading bug - Runway heading or initial heading",
+          "confirmation": "Bug supports the first turn"
+        },
+        {
+          "id": "transponder-alt",
+          "action": "Transponder - ALT when ready to move",
+          "confirmation": "Aircraft visible to traffic services"
+        }
+      ]
+    },
+    {
+      "id": "taxi-runup",
+      "title": "Taxi & Run-Up",
+      "summary": "Move carefully and verify engine, controls, and instruments.",
+      "items": [
+        {
+          "id": "taxi-light-on",
+          "action": "Taxi light - ON",
+          "confirmation": "Taxi path visible"
+        },
+        {
+          "id": "brake-check",
+          "action": "Brake check - Complete",
+          "confirmation": "Aircraft slows correctly"
+        },
+        {
+          "id": "flight-controls-free",
+          "action": "Flight controls - Free and correct",
+          "confirmation": "Aileron, elevator, and rudder respond"
+        },
+        {
+          "id": "engine-runup",
+          "action": "Run-up - Magnetos and engine indications checked",
+          "confirmation": "RPM drop and engine gauges look normal",
+          "note": "Use a sim-practical run-up point before entering the runway."
+        },
+        {
+          "id": "departure-trim",
+          "action": "Elevator trim - TAKEOFF",
+          "confirmation": "Trim indicator in takeoff range"
+        }
+      ]
+    },
+    {
+      "id": "before-takeoff",
+      "title": "Before Takeoff",
+      "summary": "Configure the Skyhawk for departure.",
+      "items": [
+        {
+          "id": "doors-windows-closed",
+          "action": "Doors and windows - Closed",
+          "confirmation": "Cabin secure"
+        },
+        {
+          "id": "flaps-takeoff",
+          "action": "Flaps - Set for runway and performance",
+          "confirmation": "Flap indication matches plan"
+        },
+        {
+          "id": "mixture-takeoff",
+          "action": "Mixture - RICH or leaned for high elevation",
+          "confirmation": "Engine configured for takeoff power"
+        },
+        {
+          "id": "landing-light-on",
+          "action": "Landing light and strobes - ON",
+          "confirmation": "Aircraft visible for departure"
+        },
+        {
+          "id": "runway-final-check",
+          "action": "Runway and final - Clear",
+          "confirmation": "Safe to line up"
+        }
+      ]
+    },
+    {
+      "id": "takeoff-climb",
+      "title": "Takeoff & Climb",
+      "summary": "Apply power, lift off, and establish a stable climb.",
+      "items": [
+        {
+          "id": "full-power",
+          "action": "Throttle - FULL",
+          "confirmation": "Airspeed alive and engine gauges green"
+        },
+        {
+          "id": "rotate-climb",
+          "action": "Rotate and climb - Establish",
+          "confirmation": "Positive climb and runway centerline controlled"
+        },
+        {
+          "id": "flaps-retract",
+          "action": "Flaps - Retract on schedule",
+          "confirmation": "Aircraft clean and accelerating"
+        },
+        {
+          "id": "climb-trim",
+          "action": "Trim - Set for climb",
+          "confirmation": "Control pressure relaxed"
+        },
+        {
+          "id": "autopilot-as-needed",
+          "action": "Autopilot - ON when desired",
+          "confirmation": "G1000 following selected mode"
+        }
+      ]
+    },
+    {
+      "id": "cruise",
+      "title": "Cruise",
+      "summary": "Set cruise power and keep the route, fuel, and weather in view.",
+      "items": [
+        {
+          "id": "cruise-power",
+          "action": "Power - Set for cruise",
+          "confirmation": "Airspeed and engine indications stable"
+        },
+        {
+          "id": "mixture-lean",
+          "action": "Mixture - Lean as needed",
+          "confirmation": "Engine remains smooth"
+        },
+        {
+          "id": "fuel-balance",
+          "action": "Fuel and endurance - Checked",
+          "confirmation": "Remaining fuel supports destination and reserve"
+        },
+        {
+          "id": "route-weather",
+          "action": "Route, traffic, and weather - Reviewed",
+          "confirmation": "No surprise terrain, traffic, or weather ahead"
+        }
+      ]
+    },
+    {
+      "id": "descent-approach",
+      "title": "Descent & Approach",
+      "summary": "Prepare the arrival and slow the Skyhawk before the pattern or final.",
+      "items": [
+        {
+          "id": "arrival-weather",
+          "action": "Arrival weather / ATIS - Checked",
+          "confirmation": "Runway, wind, and altimeter known"
+        },
+        {
+          "id": "approach-nav",
+          "action": "Approach or pattern navigation - Set",
+          "confirmation": "G1000 guidance matches intended arrival"
+        },
+        {
+          "id": "descent-power",
+          "action": "Power - Reduce for descent",
+          "confirmation": "Rate and airspeed under control"
+        },
+        {
+          "id": "mixture-approach",
+          "action": "Mixture - Enrich as appropriate",
+          "confirmation": "Engine ready for lower altitude or go-around"
+        },
+        {
+          "id": "landing-light-approach",
+          "action": "Landing light - ON",
+          "confirmation": "Aircraft visible in the terminal area"
+        }
+      ]
+    },
+    {
+      "id": "landing",
+      "title": "Landing",
+      "summary": "Configure, stabilize, touch down, and exit the runway.",
+      "items": [
+        {
+          "id": "flaps-landing",
+          "action": "Flaps - Set for landing",
+          "confirmation": "Airspeed in flap operating range"
+        },
+        {
+          "id": "final-stable",
+          "action": "Final approach - Stable",
+          "confirmation": "On path, on speed, runway assured"
+        },
+        {
+          "id": "touchdown",
+          "action": "Round out and touchdown - Execute",
+          "confirmation": "Main wheels down under control"
+        },
+        {
+          "id": "braking",
+          "action": "Braking - As required",
+          "confirmation": "Safe taxi speed achieved"
+        },
+        {
+          "id": "runway-clear",
+          "action": "Vacate runway - Complete",
+          "confirmation": "Aircraft clear of active runway"
+        }
+      ]
+    },
+    {
+      "id": "shutdown",
+      "title": "Shutdown",
+      "summary": "Clean up and secure the aircraft after parking.",
+      "items": [
+        {
+          "id": "parking-brake-final",
+          "action": "Parking brake - SET",
+          "confirmation": "Aircraft stopped at parking"
+        },
+        {
+          "id": "lights-after-landing",
+          "action": "Landing and taxi lights - OFF",
+          "confirmation": "Exterior lighting reduced"
+        },
+        {
+          "id": "avionics-off-shutdown",
+          "action": "Avionics bus - OFF",
+          "confirmation": "Displays powered down"
+        },
+        {
+          "id": "mixture-cutoff",
+          "action": "Mixture - IDLE CUTOFF",
+          "confirmation": "Engine stopped"
+        },
+        {
+          "id": "master-off",
+          "action": "Battery and alternator - OFF",
+          "confirmation": "Aircraft secured"
+        }
+      ]
+    }
+  ]
+}
