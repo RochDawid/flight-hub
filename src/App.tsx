@@ -10,7 +10,7 @@ import {
   RotateCcw,
   Sparkles,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import {
   aircraftProfiles,
@@ -451,15 +451,15 @@ function App() {
     }));
   }
 
-  function requestResetSession() {
+  const requestResetSession = useCallback(() => {
     resetTriggerRef.current =
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
     setIsResetDialogOpen(true);
-  }
+  }, []);
 
-  function confirmResetSession() {
+  const confirmResetSession = useCallback(() => {
     const nextSession = createSession(activeProfile);
     window.localStorage.removeItem(storageKeyFor(activeProfile.id));
     window.localStorage.removeItem(legacyStorageKeyFor(activeProfile.id));
@@ -469,11 +469,11 @@ function App() {
       ...current,
       [activeProfile.id]: nextSession,
     }));
-  }
+  }, [activeProfile]);
 
-  function cancelResetSession() {
+  const cancelResetSession = useCallback(() => {
     setIsResetDialogOpen(false);
-  }
+  }, []);
 
   if (route.kind === "checklist" && activePhase) {
     return (
