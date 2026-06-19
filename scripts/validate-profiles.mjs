@@ -12,6 +12,10 @@ const profileStringFields = [
 const phaseStringFields = ["id", "title", "summary"];
 const itemStringFields = ["id", "action"];
 const optionalItemStringFields = ["confirmation", "note"];
+const profileFields = new Set([...profileStringFields, "phases"]);
+const phaseFields = new Set([...phaseStringFields, "items"]);
+const itemFields = new Set([...itemStringFields, ...optionalItemStringFields]);
+const stableIdPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const repoRoot = path.resolve(fileURLToPath(import.meta.url), "../..");
 const defaultProfileDirectory = path.join(repoRoot, "src/data");
@@ -22,6 +26,26 @@ function isRecord(value) {
 
 function formatDuplicateLocation(existingPath, duplicatePath) {
   return `${duplicatePath} duplicates ${existingPath}`;
+}
+
+function normalizeContentKey(value) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function validateAllowedFields(value, allowedFields, location, errors) {
+  for (const field of Object.keys(value)) {
+    if (!allowedFields.has(field)) {
+      errors.push(`${location}.${field} is not a supported field`);
+    }
+  }
+}
+
+function validateStableId(value, location, errors) {
+  if (!stableIdPattern.test(value)) {
+    errors.push(
+      `${location} must use stable kebab-case lowercase letters and numbers`,
+    );
+  }
 }
 
 function readRequiredString(value, field, location, errors) {
@@ -39,13 +63,23 @@ function readRequiredString(value, field, location, errors) {
 }
 
 function validateOptionalString(value, field, location, errors) {
-  if (Object.hasOwn(value, field) && typeof value[field] !== "string") {
+  if (!Object.hasOwn(value, field)) {
+    return;
+  }
+
+  if (typeof value[field] !== "string") {
     errors.push(`${location}.${field} must be a string when present`);
+    return;
+  }
+
+  if (value[field].trim() === "") {
+    errors.push(`${location}.${field} must not be empty when present`);
   }
 }
 
-export function validateProfiles(profileRecords) {
+export function validateProfileRecords(profileRecords) {
   const errors = [];
+  const warnings = [];
   const profileIds = new Map();
 
   profileRecords.forEach((record, profileIndex) => {
@@ -56,6 +90,8 @@ export function validateProfiles(profileRecords) {
       errors.push(`${profileLocation} must be an object`);
       return;
     }
+
+    validateAllowedFields(profile, profileFields, profileLocation, errors);
 
     const profileId = readRequiredString(
       profile,
@@ -69,6 +105,8 @@ export function validateProfiles(profileRecords) {
     }
 
     if (profileId) {
+      validateStableId(profileId, `${profileLocation}.id`, errors);
+
       const existingPath = profileIds.get(profileId);
 
       if (existingPath) {
@@ -94,7 +132,9 @@ export function validateProfiles(profileRecords) {
     }
 
     const phaseIds = new Map();
+    const phaseTitles = new Map();
     const itemIds = new Map();
+    const itemActions = new Map();
 
     profile.phases.forEach((phase, phaseIndex) => {
       const phaseLocation = `${profileLocation}.phases[${phaseIndex}]`;
@@ -104,13 +144,25 @@ export function validateProfiles(profileRecords) {
         return;
       }
 
-      const phaseId = readRequiredString(phase, "id", phaseLocation, errors);
+      validateAllowedFields(phase, phaseFields, phaseLocation, errors);
 
-      for (const field of phaseStringFields.filter((field) => field !== "id")) {
+      const phaseId = readRequiredString(phase, "id", phaseLocation, errors);
+      const phaseTitle = readRequiredString(
+        phase,
+        "title",
+        phaseLocation,
+        errors,
+      );
+
+      for (const field of phaseStringFields.filter(
+        (field) => field !== "id" && field !== "title",
+      )) {
         readRequiredString(phase, field, phaseLocation, errors);
       }
 
       if (phaseId) {
+        validateStableId(phaseId, `${phaseLocation}.id`, errors);
+
         const existingPath = phaseIds.get(phaseId);
 
         if (existingPath) {
@@ -121,6 +173,24 @@ export function validateProfiles(profileRecords) {
           );
         } else {
           phaseIds.set(phaseId, `${phaseLocation}.id`);
+        }
+      }
+
+      if (phaseTitle) {
+        const normalizedTitle = normalizeContentKey(phaseTitle);
+        const existingPath = phaseTitles.get(normalizedTitle);
+
+        if (existingPath) {
+          errors.push(
+            `duplicate phase title "${phaseTitle}" in profile "${
+              profileId ?? profileLocation
+            }": ${formatDuplicateLocation(
+              existingPath,
+              `${phaseLocation}.title`,
+            )}`,
+          );
+        } else {
+          phaseTitles.set(normalizedTitle, `${phaseLocation}.title`);
         }
       }
 
@@ -142,34 +212,66 @@ export function validateProfiles(profileRecords) {
           return;
         }
 
-        const itemId = readRequiredString(item, "id", itemLocation, errors);
+        validateAllowedFields(item, itemFields, itemLocation, errors);
 
-        for (const field of itemStringFields.filter((field) => field !== "id")) {
-          readRequiredString(item, field, itemLocation, errors);
-        }
+        const itemId = readRequiredString(item, "id", itemLocation, errors);
+        const action = readRequiredString(item, "action", itemLocation, errors);
 
         for (const field of optionalItemStringFields) {
           validateOptionalString(item, field, itemLocation, errors);
         }
 
-        if (!itemId) {
-          return;
+        if (!Object.hasOwn(item, "confirmation")) {
+          warnings.push(
+            `${itemLocation}.confirmation is recommended so checklist completion has a visible expected result`,
+          );
         }
 
-        const existingPath = itemIds.get(itemId);
+        if (action) {
+          const normalizedAction = normalizeContentKey(action);
+          const existingPath = itemActions.get(normalizedAction);
 
-        if (existingPath) {
-          errors.push(
-            `duplicate checklist item id "${itemId}" in profile "${
-              profileId ?? profileLocation
-            }": ${formatDuplicateLocation(existingPath, `${itemLocation}.id`)}`,
-          );
-        } else {
-          itemIds.set(itemId, `${itemLocation}.id`);
+          if (existingPath) {
+            warnings.push(
+              `repeated checklist action "${action}" in profile "${
+                profileId ?? profileLocation
+              }": ${formatDuplicateLocation(
+                existingPath,
+                `${itemLocation}.action`,
+              )}`,
+            );
+          } else {
+            itemActions.set(normalizedAction, `${itemLocation}.action`);
+          }
+        }
+
+        if (itemId) {
+          validateStableId(itemId, `${itemLocation}.id`, errors);
+
+          const existingPath = itemIds.get(itemId);
+
+          if (existingPath) {
+            errors.push(
+              `duplicate checklist item id "${itemId}" in profile "${
+                profileId ?? profileLocation
+              }": ${formatDuplicateLocation(
+                existingPath,
+                `${itemLocation}.id`,
+              )}`,
+            );
+          } else {
+            itemIds.set(itemId, `${itemLocation}.id`);
+          }
         }
       });
     });
   });
+
+  return { errors, warnings };
+}
+
+export function validateProfiles(profileRecords) {
+  const { errors } = validateProfileRecords(profileRecords);
 
   return errors;
 }
@@ -212,10 +314,10 @@ async function main() {
   const parseErrors = records
     .map((record) => record.parseError)
     .filter(Boolean);
-  const validationErrors = validateProfiles(
+  const result = validateProfileRecords(
     records.filter((record) => !record.parseError),
   );
-  const errors = [...parseErrors, ...validationErrors];
+  const errors = [...parseErrors, ...result.errors];
 
   if (errors.length > 0) {
     console.error("Aircraft profile validation failed:");
@@ -226,6 +328,14 @@ async function main() {
 
     process.exitCode = 1;
     return;
+  }
+
+  if (result.warnings.length > 0) {
+    console.warn("Aircraft profile validation warnings:");
+
+    for (const warning of result.warnings) {
+      console.warn(`- ${warning}`);
+    }
   }
 
   console.log(`Validated ${records.length} aircraft profiles.`);
