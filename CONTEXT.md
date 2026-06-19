@@ -1,6 +1,6 @@
-# Flight Hub
+# MSFS Checklist Companion
 
-A personal Microsoft Flight Simulator procedure companion organized around aircraft-specific checklist flows. It exists to make each simulator flight easier to prepare, fly, and finish without turning the experience into a full route-planning system.
+MSFS Checklist Companion is a personal Microsoft Flight Simulator procedure companion organized around aircraft-specific checklist flows. It exists to make each simulator flight easier to prepare, fly, and finish without turning the experience into a full route-planning system.
 
 ## Language
 
@@ -25,7 +25,7 @@ An outbound external resource that helps prepare or validate a simulator flight,
 _Avoid_: Route workflow, planning module
 
 **Checklist Dashboard**:
-The compact landing page for the app. It introduces the simulator checklist companion, surfaces available aircraft profiles, shows checklist session progress when available, and links to supporting planning resources.
+The compact landing page for the app. It introduces MSFS Checklist Companion, surfaces available aircraft profiles, shows checklist session progress when available, and links to supporting planning resources.
 _Avoid_: Marketing homepage, brochure page
 
 **Minimal Cockpit Utility**:
