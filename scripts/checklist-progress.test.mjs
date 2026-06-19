@@ -14,7 +14,7 @@ import {
   storageKeyFor,
   toggleSessionItem,
   updateSession,
-} from "../src/session.ts";
+} from "../src/checklistProgress.ts";
 
 const profile = {
   id: "test-aircraft",
