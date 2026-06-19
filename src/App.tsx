@@ -10,7 +10,7 @@ import {
   RotateCcw,
   Sparkles,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import {
   aircraftProfiles,
@@ -48,6 +48,14 @@ type AircraftVisual = {
 const appName = "MSFS Checklist Companion";
 const storageKeyPrefix = "msfs-checklist-companion";
 const legacyStorageKeyPrefix = "flight-hub";
+const focusableDialogSelector = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  '[tabindex]:not([tabindex="-1"])',
+].join(",");
 
 const planningLinks: PlanningLink[] = [
   {
@@ -286,6 +294,12 @@ function getChecklistActionLabel(
   return "Start checklist";
 }
 
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(focusableDialogSelector),
+  ).filter((element) => element.offsetParent !== null);
+}
+
 function App() {
   const [route, setRoute] = useState<Route>(readRoute);
   const [sessions, setSessions] =
@@ -294,6 +308,8 @@ function App() {
     string | null
   >(null);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const resetTriggerRef = useRef<HTMLElement | null>(null);
+  const wasResetDialogOpenRef = useRef(isResetDialogOpen);
 
   const activeProfile =
     route.kind === "checklist"
@@ -345,19 +361,17 @@ function App() {
   }, [recentlyCheckedItemId]);
 
   useEffect(() => {
-    if (!isResetDialogOpen) {
-      return undefined;
+    if (wasResetDialogOpenRef.current && !isResetDialogOpen) {
+      const resetTrigger = resetTriggerRef.current;
+
+      if (resetTrigger?.isConnected) {
+        resetTrigger.focus({ preventScroll: true });
+      }
+
+      resetTriggerRef.current = null;
     }
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsResetDialogOpen(false);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    wasResetDialogOpenRef.current = isResetDialogOpen;
   }, [isResetDialogOpen]);
 
   function updateSession(
@@ -438,6 +452,10 @@ function App() {
   }
 
   function requestResetSession() {
+    resetTriggerRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     setIsResetDialogOpen(true);
   }
 
@@ -640,8 +658,13 @@ function AircraftCard({
           <p>{profile.variant}</p>
         </div>
         <div
-          aria-label={`${overallPercent}% complete`}
+          aria-label={`${profile.name} checklist progress`}
+          aria-valuemax={100}
+          aria-valuemin={0}
+          aria-valuenow={overallPercent}
+          aria-valuetext={`${completedCount} of ${totalCount} checklist items complete`}
           className="progress-dial"
+          role="progressbar"
           style={{ "--progress": `${overallPercent}%` } as CSSProperties}
         >
           <span>{overallPercent}%</span>
@@ -732,6 +755,7 @@ function ChecklistPage({
   showResetDialog,
   totalCount,
 }: ChecklistProps) {
+  const resetDialogRef = useRef<HTMLElement>(null);
   const activeCompletion = getPhaseCompletion(activePhase, session.completed);
   const activePhaseIndex = profile.phases.findIndex(
     (phase) => phase.id === activePhase.id,
@@ -742,6 +766,59 @@ function ChecklistPage({
     activeCompletion.total > 0 &&
     activeCompletion.done === activeCompletion.total;
   const checklistComplete = totalCount > 0 && completedCount === totalCount;
+
+  useEffect(() => {
+    if (!showResetDialog || !resetDialogRef.current) {
+      return undefined;
+    }
+
+    const dialog = resetDialogRef.current;
+    const originalBodyOverflow = document.body.style.overflow;
+    const focusableElements = getFocusableElements(dialog);
+    const firstFocusableElement = focusableElements[0] ?? dialog;
+
+    document.body.style.overflow = "hidden";
+    firstFocusableElement.focus({ preventScroll: true });
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCancelReset();
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const currentFocusableElements = getFocusableElements(dialog);
+
+      if (currentFocusableElements.length === 0) {
+        event.preventDefault();
+        dialog.focus({ preventScroll: true });
+        return;
+      }
+
+      const firstElement = currentFocusableElements[0];
+      const lastElement =
+        currentFocusableElements[currentFocusableElements.length - 1];
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus({ preventScroll: true });
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus({ preventScroll: true });
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onCancelReset, showResetDialog]);
 
   return (
     <main className="app-shell checklist-shell">
@@ -767,7 +844,15 @@ function ChecklistPage({
         </button>
       </section>
 
-      <div className="overall-progress" aria-label={`${overallPercent}% complete`}>
+      <div
+        aria-label={`${profile.name} checklist progress`}
+        aria-valuemax={100}
+        aria-valuemin={0}
+        aria-valuenow={overallPercent}
+        aria-valuetext={`${completedCount} of ${totalCount} checklist items complete`}
+        className="overall-progress"
+        role="progressbar"
+      >
         <span style={{ width: `${overallPercent}%` }} />
       </div>
 
@@ -841,6 +926,15 @@ function ChecklistPage({
           <div className="item-list">
             {activePhase.items.map((item) => {
               const checked = Boolean(session.completed[item.id]);
+              const confirmationId = `${profile.id}-${activePhase.id}-${item.id}-confirmation`;
+              const noteId = `${profile.id}-${activePhase.id}-${item.id}-note`;
+              const describedBy =
+                [
+                  item.confirmation ? confirmationId : null,
+                  item.note ? noteId : null,
+                ]
+                  .filter(Boolean)
+                  .join(" ") || undefined;
               const itemClassName = [
                 "check-item",
                 checked ? "done" : "",
@@ -852,6 +946,7 @@ function ChecklistPage({
               return (
                 <label className={itemClassName} key={item.id}>
                   <input
+                    aria-describedby={describedBy}
                     checked={checked}
                     onChange={() => onToggleItem(item.id)}
                     type="checkbox"
@@ -861,8 +956,10 @@ function ChecklistPage({
                   </span>
                   <span className="item-copy">
                     <strong>{item.action}</strong>
-                    {item.confirmation ? <small>{item.confirmation}</small> : null}
-                    {item.note ? <em>{item.note}</em> : null}
+                    {item.confirmation ? (
+                      <small id={confirmationId}>{item.confirmation}</small>
+                    ) : null}
+                    {item.note ? <em id={noteId}>{item.note}</em> : null}
                   </span>
                 </label>
               );
@@ -920,13 +1017,23 @@ function ChecklistPage({
       </section>
 
       {showResetDialog ? (
-        <div className="modal-backdrop" role="presentation">
+        <div
+          className="modal-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              onCancelReset();
+            }
+          }}
+          role="presentation"
+        >
           <section
             aria-describedby="reset-dialog-description"
             aria-labelledby="reset-dialog-title"
             aria-modal="true"
             className="reset-dialog"
+            ref={resetDialogRef}
             role="dialog"
+            tabIndex={-1}
           >
             <p className="eyebrow">Start a clean flight</p>
             <h2 id="reset-dialog-title">Reset {profile.name}?</h2>
