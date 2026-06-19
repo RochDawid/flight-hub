@@ -8,6 +8,7 @@ import {
   ListChecks,
   Plane,
   RotateCcw,
+  Sparkles,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
@@ -39,6 +40,15 @@ type PlanningLink = {
   href: string;
 };
 
+type AircraftVisual = {
+  code: string;
+  role: string;
+};
+
+const appName = "MSFS Checklist Companion";
+const storageKeyPrefix = "msfs-checklist-companion";
+const legacyStorageKeyPrefix = "flight-hub";
+
 const planningLinks: PlanningLink[] = [
   {
     label: "MSFS Flight Planner",
@@ -64,8 +74,31 @@ const routeAliases: Record<string, string> = {
   "tbm930": "daher-tbm930",
 };
 
+const aircraftVisuals: Record<string, AircraftVisual> = {
+  "boeing-737-max-8": {
+    code: "B38M",
+    role: "Airliner flow",
+  },
+  "c172-skyhawk-g1000": {
+    code: "C172",
+    role: "GA training",
+  },
+  "daher-tbm930": {
+    code: "TBM",
+    role: "Turboprop IFR",
+  },
+  "inibuilds-a320neo": {
+    code: "A20N",
+    role: "Airbus flow",
+  },
+};
+
 function storageKeyFor(profileId: string): string {
-  return `flight-hub:${profileId}:session:v1`;
+  return `${storageKeyPrefix}:${profileId}:session:v1`;
+}
+
+function legacyStorageKeyFor(profileId: string): string {
+  return `${legacyStorageKeyPrefix}:${profileId}:session:v1`;
 }
 
 function readRoute(): Route {
@@ -92,16 +125,25 @@ function createSession(profile: AircraftProfile): ChecklistSession {
 
 function loadSession(profile: AircraftProfile): ChecklistSession {
   try {
-    const raw = window.localStorage.getItem(storageKeyFor(profile.id));
+    const storageKey = storageKeyFor(profile.id);
+    const legacyStorageKey = legacyStorageKeyFor(profile.id);
+    const raw = window.localStorage.getItem(storageKey);
+    const legacyRaw = raw ? null : window.localStorage.getItem(legacyStorageKey);
+    const persistedRaw = raw ?? legacyRaw;
 
-    if (!raw) {
+    if (!persistedRaw) {
       return createSession(profile);
     }
 
-    const parsed = JSON.parse(raw) as Partial<ChecklistSession>;
+    const parsed = JSON.parse(persistedRaw) as Partial<ChecklistSession>;
     const activePhaseExists = profile.phases.some(
       (phase) => phase.id === parsed.activePhaseId,
     );
+
+    if (legacyRaw) {
+      window.localStorage.setItem(storageKey, legacyRaw);
+      window.localStorage.removeItem(legacyStorageKey);
+    }
 
     return {
       completed: parsed.completed ?? {},
@@ -174,6 +216,76 @@ function getProfileProgress(
   };
 }
 
+function getMostRecentProfile(
+  profiles: AircraftProfile[],
+  sessions: Record<string, ChecklistSession>,
+) {
+  return profiles.reduce<AircraftProfile | undefined>((latest, profile) => {
+    const updatedAt = sessions[profile.id]?.updatedAt;
+
+    if (!updatedAt) {
+      return latest;
+    }
+
+    if (!latest) {
+      return profile;
+    }
+
+    const latestUpdatedAt = sessions[latest.id]?.updatedAt;
+
+    if (!latestUpdatedAt) {
+      return profile;
+    }
+
+    return new Date(updatedAt).getTime() > new Date(latestUpdatedAt).getTime()
+      ? profile
+      : latest;
+  }, undefined);
+}
+
+function getStatusLabel(completedCount: number, totalCount: number): string {
+  if (totalCount > 0 && completedCount === totalCount) {
+    return "Complete";
+  }
+
+  if (completedCount > 0) {
+    return "In progress";
+  }
+
+  return "Ready";
+}
+
+function getStatusTone(
+  completedCount: number,
+  totalCount: number,
+): "complete" | "active" | "ready" {
+  if (totalCount > 0 && completedCount === totalCount) {
+    return "complete";
+  }
+
+  if (completedCount > 0) {
+    return "active";
+  }
+
+  return "ready";
+}
+
+function getChecklistActionLabel(
+  completedCount: number,
+  totalCount: number,
+  nextPhaseTitle: string,
+): string {
+  if (totalCount > 0 && completedCount === totalCount) {
+    return "Review checklist";
+  }
+
+  if (completedCount > 0) {
+    return `Resume ${nextPhaseTitle}`;
+  }
+
+  return "Start checklist";
+}
+
 function App() {
   const [route, setRoute] = useState<Route>(readRoute);
   const [sessions, setSessions] =
@@ -181,6 +293,7 @@ function App() {
   const [recentlyCheckedItemId, setRecentlyCheckedItemId] = useState<
     string | null
   >(null);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
   const activeProfile =
     route.kind === "checklist"
@@ -216,6 +329,7 @@ function App() {
 
   useEffect(() => {
     setRecentlyCheckedItemId(null);
+    setIsResetDialogOpen(false);
   }, [activeProfile.id]);
 
   useEffect(() => {
@@ -229,6 +343,22 @@ function App() {
 
     return () => window.clearTimeout(timeoutId);
   }, [recentlyCheckedItemId]);
+
+  useEffect(() => {
+    if (!isResetDialogOpen) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsResetDialogOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isResetDialogOpen]);
 
   function updateSession(
     profileId: string,
@@ -307,22 +437,24 @@ function App() {
     }));
   }
 
-  function resetSession() {
-    const confirmed = window.confirm(
-      `Reset the ${activeProfile.name} checklist session for a new flight?`,
-    );
+  function requestResetSession() {
+    setIsResetDialogOpen(true);
+  }
 
-    if (!confirmed) {
-      return;
-    }
-
+  function confirmResetSession() {
     const nextSession = createSession(activeProfile);
     window.localStorage.removeItem(storageKeyFor(activeProfile.id));
+    window.localStorage.removeItem(legacyStorageKeyFor(activeProfile.id));
     setRecentlyCheckedItemId(null);
+    setIsResetDialogOpen(false);
     setSessions((current) => ({
       ...current,
       [activeProfile.id]: nextSession,
     }));
+  }
+
+  function cancelResetSession() {
+    setIsResetDialogOpen(false);
   }
 
   if (route.kind === "checklist" && activePhase) {
@@ -331,13 +463,16 @@ function App() {
         activePhase={activePhase}
         completedCount={completedCount}
         onBack={openDashboard}
+        onCancelReset={cancelResetSession}
+        onConfirmReset={confirmResetSession}
         onPhaseSelect={setActivePhase}
-        onReset={resetSession}
+        onReset={requestResetSession}
         onToggleItem={toggleItem}
         overallPercent={overallPercent}
         profile={activeProfile}
         recentlyCheckedItemId={recentlyCheckedItemId}
         session={session}
+        showResetDialog={isResetDialogOpen}
         totalCount={totalCount}
       />
     );
@@ -363,19 +498,26 @@ function DashboardPage({
   profiles,
   sessions,
 }: DashboardProps) {
+  const resumeProfile =
+    getMostRecentProfile(profiles, sessions) ?? defaultAircraftProfile;
+  const resumeSession =
+    sessions[resumeProfile.id] ?? createSession(resumeProfile);
+  const resumeProgress = getProfileProgress(resumeProfile, resumeSession);
+  const hasResume = Boolean(resumeSession.updatedAt);
+
   return (
     <main className="app-shell dashboard-shell">
       <TopBar />
 
       <section className="dashboard-grid">
         <div className="intro-panel">
-          <p className="eyebrow">MSFS 2024 checklist companion</p>
-          <h1>Flight Hub</h1>
+          <p className="eyebrow">Microsoft Flight Simulator 2024 checklist companion</p>
+          <h1>{appName}</h1>
           <p className="intro-copy">
-            A minimalist aircraft checklist hub for running a clean simulator
-            flight from stand to destination gate. Pick an aircraft profile,
-            keep the useful planning tools nearby, and tick through each phase
-            beside the sim.
+            A minimalist Microsoft Flight Simulator checklist companion for
+            running a clean flight from stand to destination gate. Pick an
+            aircraft profile, keep the useful planning tools nearby, and tick
+            through each phase beside the sim.
           </p>
 
           <div className="notice">
@@ -383,6 +525,25 @@ function DashboardPage({
             <span>
               Simulator-only guidance. This is not real-world aviation
               instruction.
+            </span>
+          </div>
+
+          <div className="dashboard-actions">
+            <button
+              className="primary-action dashboard-primary"
+              onClick={() => onOpenChecklist(resumeProfile.id)}
+              type="button"
+            >
+              {hasResume
+                ? `Continue ${resumeProgress.nextPhaseTitle}`
+                : `Start with ${resumeProfile.name}`}
+            </button>
+            <span>
+              {hasResume
+                ? `${resumeProfile.name} was updated ${formatUpdatedAt(
+                    resumeSession.updatedAt,
+                  )}.`
+                : "Pick up the default A320 flow or choose a different aircraft."}
             </span>
           </div>
         </div>
@@ -455,11 +616,26 @@ function AircraftCard({
   session,
   totalCount,
 }: AircraftCardProps) {
+  const visual = aircraftVisuals[profile.id] ?? {
+    code: "SIM",
+    role: "Checklist",
+  };
+  const statusLabel = getStatusLabel(completedCount, totalCount);
+  const statusTone = getStatusTone(completedCount, totalCount);
+  const actionLabel = getChecklistActionLabel(
+    completedCount,
+    totalCount,
+    nextPhaseTitle,
+  );
+
   return (
-    <article className="aircraft-card">
+    <article className={`aircraft-card ${statusTone}`}>
       <div className="aircraft-card-header">
         <div>
-          <p className="eyebrow">Aircraft profile</p>
+          <div className="aircraft-identity" aria-hidden="true">
+            <span>{visual.code}</span>
+            <small>{visual.role}</small>
+          </div>
           <h2>{profile.name}</h2>
           <p>{profile.variant}</p>
         </div>
@@ -471,6 +647,8 @@ function AircraftCard({
           <span>{overallPercent}%</span>
         </div>
       </div>
+
+      <span className={`status-pill ${statusTone}`}>{statusLabel}</span>
 
       <p className="profile-description">{profile.description}</p>
 
@@ -497,7 +675,7 @@ function AircraftCard({
         onClick={onOpenChecklist}
         type="button"
       >
-        Open checklist
+        {actionLabel}
       </button>
     </article>
   );
@@ -525,6 +703,8 @@ type ChecklistProps = {
   activePhase: FlightPhase;
   completedCount: number;
   onBack: () => void;
+  onCancelReset: () => void;
+  onConfirmReset: () => void;
   onPhaseSelect: (phaseId: string) => void;
   onReset: () => void;
   onToggleItem: (itemId: string) => void;
@@ -532,6 +712,7 @@ type ChecklistProps = {
   profile: AircraftProfile;
   recentlyCheckedItemId: string | null;
   session: ChecklistSession;
+  showResetDialog: boolean;
   totalCount: number;
 };
 
@@ -539,6 +720,8 @@ function ChecklistPage({
   activePhase,
   completedCount,
   onBack,
+  onCancelReset,
+  onConfirmReset,
   onPhaseSelect,
   onReset,
   onToggleItem,
@@ -546,9 +729,19 @@ function ChecklistPage({
   profile,
   recentlyCheckedItemId,
   session,
+  showResetDialog,
   totalCount,
 }: ChecklistProps) {
   const activeCompletion = getPhaseCompletion(activePhase, session.completed);
+  const activePhaseIndex = profile.phases.findIndex(
+    (phase) => phase.id === activePhase.id,
+  );
+  const previousPhase = profile.phases[activePhaseIndex - 1];
+  const nextPhase = profile.phases[activePhaseIndex + 1];
+  const activePhaseComplete =
+    activeCompletion.total > 0 &&
+    activeCompletion.done === activeCompletion.total;
+  const checklistComplete = totalCount > 0 && completedCount === totalCount;
 
   return (
     <main className="app-shell checklist-shell">
@@ -577,6 +770,26 @@ function ChecklistPage({
       <div className="overall-progress" aria-label={`${overallPercent}% complete`}>
         <span style={{ width: `${overallPercent}%` }} />
       </div>
+
+      <label className="phase-jump">
+        <span>Jump to phase</span>
+        <select
+          onChange={(event) => onPhaseSelect(event.currentTarget.value)}
+          value={activePhase.id}
+        >
+          {profile.phases.map((phase, index) => {
+            const completion = getPhaseCompletion(phase, session.completed);
+
+            return (
+              <option key={phase.id} value={phase.id}>
+                {`${index + 1}. ${phase.title} (${completion.done}/${
+                  completion.total
+                })`}
+              </option>
+            );
+          })}
+        </select>
+      </label>
 
       <section className="checklist-layout">
         <nav className="phase-rail" aria-label="Flight phases">
@@ -655,8 +868,92 @@ function ChecklistPage({
               );
             })}
           </div>
+
+          {activePhaseComplete ? (
+            <div className="phase-complete-card">
+              <span className="phase-complete-icon" aria-hidden="true">
+                <Sparkles size={18} />
+              </span>
+              <span>
+                <strong>
+                  {checklistComplete
+                    ? "Checklist complete"
+                    : `${activePhase.title} complete`}
+                </strong>
+                <small>
+                  {nextPhase
+                    ? `Next up: ${nextPhase.title}.`
+                    : "Nice flight. You can review or start fresh from here."}
+                </small>
+              </span>
+              <button
+                className="compact-action"
+                onClick={() =>
+                  nextPhase ? onPhaseSelect(nextPhase.id) : onBack()
+                }
+                type="button"
+              >
+                {nextPhase ? `Go to ${nextPhase.title}` : "Back to dashboard"}
+              </button>
+            </div>
+          ) : null}
+
+          <div className="phase-navigation">
+            <button
+              className="ghost-action"
+              disabled={!previousPhase}
+              onClick={() => previousPhase && onPhaseSelect(previousPhase.id)}
+              type="button"
+            >
+              Previous phase
+            </button>
+            <button
+              className="primary-action"
+              disabled={!nextPhase}
+              onClick={() => nextPhase && onPhaseSelect(nextPhase.id)}
+              type="button"
+            >
+              Next phase
+            </button>
+          </div>
         </article>
       </section>
+
+      {showResetDialog ? (
+        <div className="modal-backdrop" role="presentation">
+          <section
+            aria-describedby="reset-dialog-description"
+            aria-labelledby="reset-dialog-title"
+            aria-modal="true"
+            className="reset-dialog"
+            role="dialog"
+          >
+            <p className="eyebrow">Start a clean flight</p>
+            <h2 id="reset-dialog-title">Reset {profile.name}?</h2>
+            <p id="reset-dialog-description">
+              This clears the saved checklist ticks for this aircraft only. Other
+              aircraft progress stays as-is.
+            </p>
+            <div className="dialog-actions">
+              <button
+                autoFocus
+                className="ghost-action"
+                onClick={onCancelReset}
+                type="button"
+              >
+                Keep progress
+              </button>
+              <button
+                className="primary-action"
+                onClick={onConfirmReset}
+                type="button"
+              >
+                Start new flight
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -666,7 +963,7 @@ function TopBar() {
     <header className="topbar">
       <a className="brand" href="/">
         <Plane size={20} aria-hidden="true" />
-        <span>Flight Hub</span>
+        <span>{appName}</span>
       </a>
       <span className="sim-badge">MSFS 2024</span>
     </header>
