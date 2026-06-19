@@ -859,10 +859,13 @@ h2 {
   padding: 20px;
   background: rgba(0, 0, 0, 0.62);
   backdrop-filter: blur(8px);
+  cursor: pointer;
 }
 
 .reset-dialog {
   width: min(460px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
   padding: 24px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -870,6 +873,7 @@ h2 {
     linear-gradient(180deg, rgba(255, 119, 108, 0.08), transparent),
     var(--panel);
   box-shadow: var(--shadow);
+  cursor: default;
 }
 
 .reset-dialog h2 {
