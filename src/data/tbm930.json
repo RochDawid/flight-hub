@@ -310,7 +310,7 @@
       "summary": "Clean up after runway exit, park, and secure the TBM.",
       "items": [
         {
-          "id": "flaps-up",
+          "id": "flaps-up-after-landing",
           "action": "Flaps - UP",
           "confirmation": "Aircraft clean for taxi"
         },
