@@ -28,6 +28,11 @@
   box-sizing: border-box;
 }
 
+img,
+svg {
+  max-width: 100%;
+}
+
 html {
   min-height: 100%;
   background: var(--bg);
@@ -64,9 +69,9 @@ select:focus-visible,
 }
 
 .app-shell {
-  width: min(1180px, calc(100% - 32px));
+  width: min(1180px, calc(100% - clamp(20px, 4vw, 40px)));
   margin: 0 auto;
-  padding: 24px 0 56px;
+  padding: clamp(14px, 3vw, 24px) 0 56px;
 }
 
 .topbar {
@@ -74,6 +79,7 @@ select:focus-visible,
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  min-width: 0;
   min-height: 48px;
   margin-bottom: 34px;
 }
@@ -87,6 +93,7 @@ select:focus-visible,
 }
 
 .brand {
+  min-width: 0;
   gap: 10px;
   min-height: 42px;
   padding: 0 14px;
@@ -94,11 +101,20 @@ select:focus-visible,
   font-weight: 760;
 }
 
+.brand span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .brand svg {
+  flex: 0 0 auto;
   color: var(--accent);
 }
 
 .sim-badge {
+  flex: 0 0 auto;
   min-height: 36px;
   padding: 0 12px;
   border-radius: 999px;
@@ -146,13 +162,15 @@ p {
 h1 {
   max-width: 12ch;
   margin-bottom: 18px;
-  font-size: clamp(3rem, 8vw, 6.8rem);
+  overflow-wrap: anywhere;
+  font-size: clamp(2.75rem, 7vw, 6.2rem);
   line-height: 0.94;
   font-weight: 820;
 }
 
 h2 {
   margin-bottom: 12px;
+  overflow-wrap: anywhere;
   font-size: clamp(1.45rem, 3vw, 2.1rem);
   line-height: 1.1;
 }
@@ -272,6 +290,12 @@ h2 {
   margin-bottom: 6px;
 }
 
+.aircraft-card-header > div:first-child,
+.phase-panel-header > div:first-child,
+.checklist-title {
+  min-width: 0;
+}
+
 .aircraft-card-header p,
 .phase-panel-header p,
 .profile-description,
@@ -388,6 +412,7 @@ h2 {
 .phase-button strong,
 .item-copy strong {
   color: var(--text);
+  overflow-wrap: anywhere;
 }
 
 .primary-action,
@@ -396,7 +421,10 @@ h2 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-width: 0;
   border-radius: 8px;
+  text-align: center;
+  overflow-wrap: anywhere;
   transition:
     border-color 160ms ease,
     background 160ms ease,
@@ -479,6 +507,7 @@ h2 {
 .planning-link span {
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .planning-link svg {
@@ -487,10 +516,12 @@ h2 {
 }
 
 .checklist-shell {
-  width: min(1320px, calc(100% - 32px));
+  width: min(1320px, calc(100% - clamp(20px, 4vw, 40px)));
 }
 
 .checklist-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   margin-bottom: 18px;
 }
@@ -535,9 +566,23 @@ h2 {
 }
 
 .phase-jump {
+  position: relative;
   display: none;
   gap: 8px;
   margin-bottom: 14px;
+}
+
+.phase-jump::after {
+  position: absolute;
+  right: 18px;
+  bottom: 19px;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid var(--muted-strong);
+  border-bottom: 2px solid var(--muted-strong);
+  pointer-events: none;
+  content: "";
+  transform: rotate(45deg);
 }
 
 .phase-jump span {
@@ -547,9 +592,10 @@ h2 {
 }
 
 .phase-jump select {
+  appearance: none;
   width: 100%;
   min-height: 46px;
-  padding: 0 12px;
+  padding: 0 52px 0 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(21, 23, 23, 0.92);
@@ -615,6 +661,7 @@ h2 {
 }
 
 .phase-panel {
+  min-width: 0;
   min-height: 620px;
   padding: clamp(20px, 3vw, 32px);
 }
@@ -763,6 +810,7 @@ h2 {
 .phase-complete-card span:nth-child(2) {
   display: grid;
   gap: 2px;
+  min-width: 0;
 }
 
 .phase-complete-card small {
@@ -913,66 +961,118 @@ h2 {
   }
 }
 
+@media (max-width: 1080px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .intro-panel {
+    min-height: auto;
+  }
+
+  .planning-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 920px) {
-  .dashboard-grid,
-  .aircraft-list,
-  .planning-links,
   .checklist-layout {
     grid-template-columns: 1fr;
   }
 
-  .intro-panel,
-  .aircraft-card {
+  .phase-rail {
+    position: static;
+    order: 1;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    max-height: none;
+    padding-right: 0;
+  }
+
+  .phase-panel {
+    order: 2;
     min-height: auto;
   }
 
-  .phase-rail {
-    position: static;
-    order: 2;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    max-height: none;
-    padding-right: 0;
+  .checklist-header {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .checklist-title {
+    order: -1;
+    text-align: left;
+  }
+
+  .checklist-header .ghost-action {
+    width: 100%;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell,
+  .checklist-shell {
+    width: min(100% - 36px, 1180px);
+  }
+
+  .aircraft-list,
+  .planning-links {
+    grid-template-columns: 1fr;
+  }
+
+  .planning-link {
+    min-height: auto;
   }
 
   .phase-jump {
     display: grid;
   }
 
-  .phase-panel {
-    order: 1;
+  .overall-progress {
+    display: none;
   }
 
-  .checklist-header {
-    align-items: stretch;
-    flex-direction: column;
+  .phase-rail {
+    display: none;
   }
 
-  .checklist-title {
-    text-align: left;
+  .phase-complete-card {
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 640px) {
   .app-shell,
   .checklist-shell {
-    width: min(100% - 20px, 1180px);
+    width: min(100% - 32px, 1180px);
     padding-top: 12px;
   }
 
   .topbar {
+    gap: 8px;
     margin-bottom: 20px;
   }
 
-  .brand span {
-    display: none;
+  .brand {
+    flex: 1 1 auto;
+    padding: 0 11px;
+  }
+
+  .sim-badge {
+    padding: 0 10px;
+    font-size: 0.78rem;
   }
 
   h1 {
-    font-size: clamp(2.6rem, 18vw, 4rem);
+    font-size: clamp(2.35rem, 15vw, 3.55rem);
+  }
+
+  .checklist-title h1 {
+    font-size: clamp(2rem, 12vw, 3rem);
   }
 
   .intro-panel {
-    padding: 26px;
+    padding: 22px;
   }
 
   .intro-copy {
@@ -980,15 +1080,18 @@ h2 {
   }
 
   .dashboard-primary,
-  .compact-action {
+  .compact-action,
+  .phase-navigation .primary-action,
+  .phase-navigation .ghost-action {
     width: 100%;
   }
 
-  .phase-rail {
+  .stats-grid,
+  .phase-navigation,
+  .dialog-actions {
     grid-template-columns: 1fr;
   }
 
-  .aircraft-card-header,
   .phase-panel-header {
     flex-direction: column;
   }
@@ -997,12 +1100,37 @@ h2 {
     width: 72px;
   }
 
-  .phase-complete-card,
-  .dialog-actions {
-    grid-template-columns: 1fr;
-  }
-
   .phase-navigation {
     padding-top: 4px;
+  }
+}
+
+@media (max-width: 420px) {
+  .app-shell,
+  .checklist-shell {
+    width: min(100% - 28px, 1180px);
+  }
+
+  .brand {
+    max-width: calc(100% - 102px);
+  }
+
+  .intro-panel,
+  .aircraft-list .aircraft-card,
+  .phase-panel,
+  .reset-dialog {
+    padding: 16px;
+  }
+
+  .notice,
+  .stat,
+  .planning-link,
+  .phase-button,
+  .check-item {
+    padding: 12px;
+  }
+
+  .progress-dial {
+    width: 64px;
   }
 }
