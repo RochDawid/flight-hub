@@ -231,7 +231,15 @@ async function main() {
   console.log(`Validated ${records.length} aircraft profiles.`);
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+function isDirectRun() {
+  const entrypoint = process.argv[1];
+
+  return (
+    Boolean(entrypoint) && import.meta.url === pathToFileURL(entrypoint).href
+  );
+}
+
+if (isDirectRun()) {
   main().catch((error) => {
     console.error(error);
     process.exitCode = 1;

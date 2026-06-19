@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import test from "node:test";
+import { promisify } from "node:util";
 import { validateProfiles } from "./validate-profiles.mjs";
+
+const execFileAsync = promisify(execFile);
 
 function createValidProfile(overrides = {}) {
   return {
@@ -36,6 +40,16 @@ test("accepts a valid aircraft profile", () => {
   ]);
 
   assert.deepEqual(errors, []);
+});
+
+test("can be imported when process.argv[1] is undefined", async () => {
+  const { stderr, stdout } = await execFileAsync(process.execPath, [
+    "-e",
+    "await import('./scripts/validate-profiles.mjs'); console.log('imported');",
+  ]);
+
+  assert.equal(stderr, "");
+  assert.equal(stdout.trim(), "imported");
 });
 
 test("rejects duplicate aircraft profile ids", () => {
